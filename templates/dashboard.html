@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingsland Properties — KPI Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:          #f5f4f2;
+    --white:       #ffffff;
+    --border:      #e8e4df;
+    --border-l:    #f0ede9;
+    --accent:      #E8691A;
+    --accent-lt:   #fdf0e8;
+    --accent-dk:   #c4561a;
+    --text:        #1e1a16;
+    --muted:       #6b6460;
+    --light:       #9e9892;
+    --red:         #c0392b;
+    --green:       #27ae60;
+    --green-lt:    #eafaf1;
+    --yellow:      #d68910;
+    --blue:        #2471a3;
+    --purple:      #7d3c98;
+    --radius:      12px;
+    --shadow:      0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+    --font:        'Outfit',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;}
+
+  /* Header */
+  .header{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);gap:16px;}
+  .header-logo img{height:36px;width:auto;display:block;}
+  .header-left{display:flex;align-items:center;gap:20px;}
+  .tab-nav{display:flex;align-items:center;gap:2px;}
+  .tab-btn{padding:6px 16px;border-radius:8px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;cursor:pointer;transition:all .15s;font-family:var(--font);white-space:nowrap;}
+  .tab-btn:hover{background:var(--bg);color:var(--text);}
+  .tab-btn.active{background:var(--accent-lt);color:var(--accent);font-weight:600;}
+  .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .range-wrap{position:relative;}
+  .range-select{background:var(--white);border:1px solid var(--border);color:var(--text);padding:6px 28px 6px 10px;border-radius:8px;font-size:12px;font-family:var(--font);cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;}
+  .range-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);font-size:9px;}
+  .date-input{background:var(--white);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:8px;font-size:12px;font-family:var(--font);outline:none;}
+  .date-input:focus{border-color:var(--accent);}
+  .apply-btn{background:var(--white);border:1px solid var(--accent);color:var(--accent);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);}
+  .apply-btn:hover{background:var(--accent-lt);}
+  .sync-btn{background:var(--accent);color:white;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .sync-btn:hover{background:var(--accent-dk);box-shadow:0 2px 8px rgba(232,105,26,.3);}
+  .sync-btn:disabled{opacity:.5;cursor:not-allowed;box-shadow:none;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .spinner{width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:none;}
+  .syncing .spinner{display:inline-block;}
+
+  /* Meta */
+  .meta-bar{padding:10px 28px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);background:var(--white);border-bottom:1px solid var(--border-l);}
+  .meta-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+
+  /* Content */
+  .content{padding:24px 28px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* Cards */
+  .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+  .card-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--light);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+
+  /* "Live" indicator — for cards whose value is always today's current snapshot */
+  .live-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#0a8a3d;background:rgba(40,180,99,.10);border:1px solid rgba(40,180,99,.25);border-radius:10px;padding:2px 7px 2px 6px;line-height:1;cursor:help;}
+  .live-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:#28b463;box-shadow:0 0 0 0 rgba(40,180,99,.6);animation:livePulse 1.8s infinite;}
+  @keyframes livePulse{
+    0%   {box-shadow:0 0 0 0 rgba(40,180,99,.55);}
+    70%  {box-shadow:0 0 0 6px rgba(40,180,99,0);}
+    100% {box-shadow:0 0 0 0 rgba(40,180,99,0);}
+  }
+  .big-number{font-size:42px;font-weight:300;letter-spacing:-2px;color:var(--text);line-height:1;flex:1;display:flex;align-items:flex-end;}
+  .big-number span{font-size:20px;color:var(--light);font-weight:400;margin-left:2px;line-height:1.3;}
+  .big-number.accent{color:var(--accent);}
+  .big-number.green{color:var(--green);}
+  .big-number.red{color:var(--red);}
+  .card-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+
+  /* Clickable cards */
+  .card-drill{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;}
+  .card-drill:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(232,105,26,.12);transform:translateY(-1px);}
+  .drill-hint{font-size:11px;color:var(--light);margin-top:10px;opacity:0;transition:opacity .15s;}
+  .card-drill:hover .drill-hint{opacity:1;}
+
+  .chart-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);}
+  .chart-title{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--light);margin-bottom:14px;}
+
+  /* Grids */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;}
+  .grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;}
+  .grid-5{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;}
+
+  /* Section header */
+  .section-header{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .section-header:first-child{margin-top:0;}
+
+  /* Badges */
+  .badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600;}
+  .badge-orange{background:#fdf0e8;color:var(--accent);}
+  .badge-green{background:var(--green-lt);color:var(--green);}
+  .badge-red{background:#fdf0f0;color:var(--red);}
+  .badge-blue{background:#ebf3fb;color:var(--blue);}
+  .badge-muted{background:var(--bg);color:var(--muted);}
+
+  /* Progress bar */
+  .bar-track{background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-top:4px;}
+  .bar-fill{height:100%;border-radius:4px;background:var(--accent);transition:width .6s ease;}
+  .bar-fill.green{background:var(--green);}
+  .bar-fill.red{background:var(--red);}
+  .bar-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .bar-row strong{color:var(--text);}
+
+  /* PM table */
+  .pm-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .pm-table th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--light);padding:0 12px 10px;border-bottom:1px solid var(--border);}
+  .pm-table th:first-child{padding-left:0;}
+  .pm-table td{padding:10px 12px;border-bottom:1px solid var(--border-l);color:var(--text);}
+  .pm-table td:first-child{padding-left:0;font-weight:500;}
+  .pm-table tr:last-child td{border-bottom:none;}
+  .pm-total-row td{font-weight:700;color:var(--accent);border-top:2px solid var(--border);border-bottom:none;padding-top:12px;}
+
+  /* Reviews */
+  .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+  .review-row{display:flex;align-items:center;gap:8px;}
+  .review-label{font-size:12px;color:var(--muted);width:70px;flex-shrink:0;}
+  .review-input{width:70px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);outline:none;}
+  .review-input:focus{border-color:var(--accent);}
+  .review-btn{background:var(--accent);color:white;border:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:background .15s;white-space:nowrap;margin-top:12px;width:100%;}
+  .review-btn:hover{background:var(--accent-dk);}
+
+  /* Empty */
+  .empty{text-align:center;padding:80px 40px;color:var(--muted);}
+  .empty-icon{font-size:48px;margin-bottom:16px;}
+  .empty h2{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;}
+  .empty p{font-size:14px;line-height:1.6;}
+  .empty p strong{color:var(--text);}
+
+  /* ── MODAL ── */
+  #modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:200;backdrop-filter:blur(2px);}
+  #modal{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(900px,95vw);max-height:82vh;background:var(--white);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.15);z-index:201;flex-direction:column;}
+  #modal.open{display:flex;}
+  .modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+  .modal-title{font-size:16px;font-weight:600;color:var(--text);}
+  .modal-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .modal-close{background:var(--bg);border:1px solid var(--border);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--muted);flex-shrink:0;margin-left:16px;display:flex;align-items:center;justify-content:center;}
+  .modal-close:hover{background:var(--border);}
+  .modal-body{overflow-y:auto;flex:1;}
+  .modal-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .modal-table th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--light);padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--white);z-index:1;}
+  .modal-table td{padding:10px 16px;border-bottom:1px solid var(--border-l);color:var(--text);vertical-align:top;}
+  .modal-table tr:last-child td{border-bottom:none;}
+  .modal-table tr:hover td{background:#fafaf9;}
+  .modal-empty{text-align:center;padding:40px;color:var(--light);font-size:13px;}
+
+  @media(max-width:900px){
+    .grid-5,.grid-4{grid-template-columns:1fr 1fr;}
+    .grid-3{grid-template-columns:1fr 1fr;}
+    .header{flex-wrap:wrap;height:auto;padding:12px 16px;gap:10px;}
+    .content{padding:16px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo"><img src="/static/logo.png" alt="Kingsland Properties"></div>
+    <nav class="tab-nav">
+      <button class="tab-btn {% if active_tab=='leasing' %}active{% endif %}" onclick="switchTab('leasing')">Leasing</button>
+      <button class="tab-btn {% if active_tab=='delinquency' %}active{% endif %}" onclick="switchTab('delinquency')">Delinquency</button>
+      <button class="tab-btn {% if active_tab=='maintenance' %}active{% endif %}" onclick="switchTab('maintenance')">Maintenance</button>
+      <button class="tab-btn {% if active_tab=='marketing' %}active{% endif %}" onclick="switchTab('marketing')">Marketing</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    {% set is_custom = selected_range and selected_range.startswith('custom') %}
+    <div class="range-wrap">
+      <select class="range-select" id="range-select" onchange="onRangeChange(this.value)">
+        {% for key,label in range_labels.items() %}
+        <option value="{{ key }}" {% if key==selected_range and not is_custom %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+        <option value="custom" {% if is_custom %}selected{% endif %}>Custom Range…</option>
+      </select>
+      <div class="range-arrow">▼</div>
+    </div>
+    <div class="custom-range" id="custom-range" style="display:{{ 'flex' if is_custom else 'none' }};align-items:center;gap:6px;">
+      <input type="date" id="custom-from" class="date-input" value="{{ custom_from }}">
+      <span style="color:var(--muted);font-size:12px;">to</span>
+      <input type="date" id="custom-to"   class="date-input" value="{{ custom_to }}">
+      <button class="apply-btn" onclick="applyCustomRange()">Apply</button>
+    </div>
+    <button class="sync-btn" id="sync-btn" onclick="triggerSync()">
+      <div class="spinner"></div>
+      <span class="sync-label">Sync Now</span>
+    </button>
+  </div>
+</div>
+
+<div class="meta-bar">
+  {% if cache %}
+  <div class="meta-dot"></div>
+  <span id="meta-text">Last synced {{ cache.synced_at[:19].replace('T',' ') }} UTC &nbsp;·&nbsp;
+    {% if cache.range_key and cache.range_key.startswith('custom:') %}
+      {{ cache.date_from }} → {{ cache.date_to }}
+    {% else %}
+      {{ range_labels.get(cache.range_key, cache.range_key) }}
+    {% endif %}
+  </span>
+  {% else %}
+  <div class="meta-dot" style="background:var(--light)"></div>
+  <span id="meta-text">No data yet — click Sync Now to load</span>
+  {% endif %}
+</div>
+
+<div class="content">
+
+{% if not has_creds %}
+<div class="empty">
+  <div class="empty-icon">🔑</div>
+  <h2>Credentials not configured</h2>
+  <p>Add <strong>APPFOLIO_CLIENT_ID</strong> and <strong>APPFOLIO_CLIENT_SECRET</strong> to Replit Secrets, then click Sync Now.</p>
+</div>
+{% elif not cache %}
+<div class="empty">
+  <div class="empty-icon">📋</div>
+  <h2>No data yet</h2>
+  <p>Click <strong>Sync Now</strong> to pull your AppFolio KPI data.</p>
+</div>
+{% else %}
+
+{% set l = cache.leasing %}
+{% set d = cache.delinquency %}
+{% set m = cache.maintenance %}
+
+<!-- ══════════════════════════════════════════════════
+     LEASING TAB
+══════════════════════════════════════════════════ -->
+<div class="tab-panel {% if active_tab=='leasing' %}active{% endif %}" id="tab-leasing">
+
+  <div class="section-header">Occupancy</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
+    <div class="card card-drill" onclick="openModal('occupancy')">
+      <div class="card-label">Occupancy Rate <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number accent">{{ l.occ_pct }}<span>%</span></div>
+      <div class="card-sub">{{ l.occupied }} of {{ l.total_active }} active units</div>
+      <div class="drill-hint">Click to see breakdown →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('occupancy')">
+      <div class="card-label">Pre-Leased Rate <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.pre_leased_pct }}<span>%</span></div>
+      <div class="card-sub">{{ l.pre_leased }} of {{ l.total_active }} units</div>
+      <div class="drill-hint">Click to see breakdown →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('all_units')">
+      <div class="card-label">Total Units <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.total_units }}</div>
+      <div class="card-sub">Includes owner holds</div>
+      <div class="drill-hint">Click to see all units →</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
+    <div class="card card-drill" onclick="openModal('owner_holds')">
+      <div class="card-label">Owner Holds <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number" style="color:var(--blue)">{{ l.owner_holds }}</div>
+      <div class="card-sub">Excluded from % calcs</div>
+      <div class="drill-hint">Click to see units →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('vacant')">
+      <div class="card-label">Vacant — Not Rented <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number red">{{ l.vacant_not_rented }}</div>
+      <div class="card-sub" style="color:var(--red)">No upcoming lease</div>
+      <div class="drill-hint">Click to see units →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('vacant_rented')">
+      <div class="card-label">Vacant — Rented Soon <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.vacant_rented_soon }}</div>
+      <div class="card-sub" style="color:var(--accent)">Future lease signed</div>
+      <div class="drill-hint">Click to see units →</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-label">Avg Days Vacant <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.avg_days_vacant }}</div>
+      <div class="card-sub">Across vacant units</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('mtm')">
+      <div class="card-label">Month-to-Month Leases <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.mtm_count }}</div>
+      <div class="card-sub">of {{ l.current }} current tenants</div>
+      <div class="drill-hint">Click to see tenants →</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Fixed-Term Leases <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.termed_count }}</div>
+      <div class="card-sub">of {{ l.current }} current tenants</div>
+    </div>
+  </div>
+
+  <div class="section-header">Unit Status Breakdown</div>
+  <div class="grid-4">
+    <div class="card card-drill" onclick="openModal('current')">
+      <div class="card-label">Current <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number green">{{ l.current }}</div>
+      <div class="drill-hint">Click to see tenants →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('evictions')">
+      <div class="card-label">Active Evictions <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number red">{{ d.active_evictions }}</div>
+      <div class="drill-hint">Click to see units →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('notice_unrented')">
+      <div class="card-label">Notice — Unrented <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number" style="color:var(--yellow)">{{ l.notice_unrented }}</div>
+      <div class="drill-hint">Click to see tenants →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('notice_rented')">
+      <div class="card-label">Notice — Rented <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number">{{ l.notice_rented }}</div>
+      <div class="drill-hint">Click to see tenants →</div>
+    </div>
+  </div>
+
+  <div class="section-header">Leasing Activity</div>
+  <div class="grid-4">
+    <div class="card card-drill" onclick="openModal('moveins')">
+      <div class="card-label">Move-Ins</div>
+      <div class="big-number green">{{ l.move_ins }}</div>
+      <div class="card-sub">In selected period</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('moveouts')">
+      <div class="card-label">Move-Outs</div>
+      <div class="big-number">{{ l.move_outs }}</div>
+      <div class="card-sub">In selected period</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('renewals')">
+      <div class="card-label">Renewals</div>
+      <div class="big-number accent">{{ l.renewals }}</div>
+      <div class="card-sub">In selected period</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('applications')">
+      <div class="card-label">Applications</div>
+      <div class="big-number">{{ l.apps_total }}</div>
+      <div class="card-sub">{{ l.apps_per_movein }} per move-in</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label">Average Rent <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number accent">{{ l.avg_rent | fmt_currency }}</div>
+      <div class="card-sub">Per active unit</div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Occupancy & Pre-Leased Trend</div>
+      <div style="height:120px;position:relative;"><canvas id="occTrendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-header">5-Star Google Reviews</div>
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-label">YTD Cumulative (Team)</div>
+      <div class="big-number accent" id="reviews-cumulative">{{ reviews_data.ytd_total }}<span>★</span></div>
+      <div class="card-sub">5-star reviews this calendar year</div>
+      <div class="review-grid">
+        {% for person in team_members %}
+        <div class="review-row">
+          <span class="review-label">{{ person }}</span>
+          <input type="number" class="review-input" id="review-{{ loop.index }}" data-person="{{ person }}" placeholder="0" min="0">
+        </div>
+        {% endfor %}
+      </div>
+      <button class="review-btn" onclick="logReviews()">Log Reviews</button>
+      <div id="review-msg" style="font-size:12px;color:var(--green);margin-top:8px;display:none;">✓ Saved!</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="chart-card" style="flex:1;">
+        <div class="chart-title">Weekly 5-Star Reviews (Team)</div>
+        <div style="height:120px;position:relative;"><canvas id="reviewsChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-label">YTD by Team Member</div>
+        <div id="reviews-ytd-list">
+          {% set cum = reviews_data.latest_cum %}
+          {% for person in team_members %}
+          {% if person != 'Team Total' %}
+          <div class="bar-row" style="margin-bottom:4px;" data-ytd-person="{{ person }}">
+            <span>{{ person }}</span>
+            <strong data-ytd-value>{{ cum.get(person, 0) }} ★</strong>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /leasing -->
+
+
+<!-- ══════════════════════════════════════════════════
+     DELINQUENCY TAB
+══════════════════════════════════════════════════ -->
+<div class="tab-panel {% if active_tab=='delinquency' %}active{% endif %}" id="tab-delinquency">
+
+  <div style="background:#fdf0e8;border:1px solid #f5c99a;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+    <span style="font-size:16px;flex-shrink:0;">ℹ️</span>
+    <div style="font-size:13px;color:#7a3810;line-height:1.5;">
+      <strong>Delinquency data always reflects today's current balances</strong> and cannot be filtered by the date range dropdown.
+      Use the trend charts at the bottom of this tab to view how delinquency and collection rates have changed over time across syncs.
+    </div>
+  </div>
+
+  <div class="section-header">Portfolio Overview</div>
+  <div class="grid-4">
+    <div class="card card-drill" onclick="openModal('delinquency')">
+      <div class="card-label" title="Cash collected this month ÷ rent charged this month">Collection Rate <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number {% if d.collection_pct >= 95 %}green{% elif d.collection_pct >= 85 %}accent{% else %}red{% endif %}">
+        {{ d.collection_pct }}<span>%</span>
+      </div>
+      <div class="card-sub">{{ d.total_collected | fmt_currency }} of {{ d.total_rent | fmt_currency }} this month</div>
+      <div class="drill-hint">Click to see breakdown →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('delinquency')">
+      <div class="card-label">Total Delinquent <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number red">{{ d.total_delinquent | fmt_currency }}</div>
+      <div class="card-sub">{{ d.tenant_count }} delinquent tenant{{ 's' if d.tenant_count != 1 }}</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('delinquency')">
+      <div class="card-label">0–30 Days <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number" style="color:var(--yellow)">{{ d.bucket_0_30 | fmt_currency }}</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('delinquency')">
+      <div class="card-label">30+ Days <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number red">{{ d.bucket_30_plus | fmt_currency }}</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="card card-drill" onclick="openModal('evictions')">
+      <div class="card-label">Active Evictions <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number red">{{ d.active_evictions }}</div>
+      <div class="card-sub">Units with Evict status</div>
+      <div class="drill-hint">Click to see units →</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Total Collected <span class="live-badge" title="Live — reflects today's current snapshot, not the selected date range">Live</span></div>
+      <div class="big-number green">{{ d.total_collected | fmt_currency }}</div>
+      <div class="card-sub">Current month to date</div>
+    </div>
+  </div>
+
+  <div class="section-header">Breakdown by Property Manager</div>
+  <div class="card" style="margin-bottom:16px;padding:0;">
+    <table class="pm-table" style="padding: 0;">
+      <thead>
+        <tr>
+          <th style="padding:16px 22px 10px;">Property Manager</th>
+          <th>Total Delinquent</th>
+          <th>Collection %</th>
+          <th>0–30 Days</th>
+          <th>30+ Days</th>
+          <th>Tenants</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pm_name in property_groups %}
+        {% set pm = d.pm_breakdown.get(pm_name, {}) %}
+        <tr>
+          <td style="padding-left:22px;">{{ pm_name }}</td>
+          <td style="color:var(--red);font-weight:600;">{{ pm.get('total_delinquent',0) | fmt_currency }}</td>
+          <td>
+            <span class="badge {% if pm.get('collection_pct',0) >= 95 %}badge-green{% elif pm.get('collection_pct',0) >= 85 %}badge-orange{% else %}badge-red{% endif %}">
+              {{ pm.get('collection_pct',0) }}%
+            </span>
+          </td>
+          <td style="color:var(--yellow)">{{ pm.get('bucket_0_30',0) | fmt_currency }}</td>
+          <td style="color:var(--red)">{{ pm.get('bucket_30_plus',0) | fmt_currency }}</td>
+          <td><span class="badge badge-red">{{ pm.get('tenant_count',0) }}</span></td>
+        </tr>
+        {% endfor %}
+        <tr class="pm-total-row">
+          <td style="padding-left:22px;">Portfolio Total</td>
+          <td>{{ d.total_delinquent | fmt_currency }}</td>
+          <td><span class="badge badge-orange">{{ d.collection_pct }}%</span></td>
+          <td>{{ d.bucket_0_30 | fmt_currency }}</td>
+          <td>{{ d.bucket_30_plus | fmt_currency }}</td>
+          <td><span class="badge badge-orange">{{ d.tenant_count }}</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-header">Historical Trend</div>
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-title">Total Delinquency Over Time</div>
+      <div style="height:160px;position:relative;"><canvas id="delinqTrendChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Collection Rate Over Time</div>
+      <div style="height:160px;position:relative;"><canvas id="collectionTrendChart"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-bottom:16px;">
+    <div class="chart-title">Delinquency by Property Manager</div>
+    <div style="height:160px;position:relative;"><canvas id="pmTrendChart"></canvas></div>
+  </div>
+
+</div><!-- /delinquency -->
+
+
+<!-- ══════════════════════════════════════════════════
+     MAINTENANCE TAB
+══════════════════════════════════════════════════ -->
+<div class="tab-panel {% if active_tab=='maintenance' %}active{% endif %}" id="tab-maintenance">
+
+  <div class="section-header">Work Order Overview</div>
+  <div class="grid-4">
+    <div class="card card-drill" onclick="openModal('workorders')">
+      <div class="card-label">Total Created</div>
+      <div class="big-number accent">{{ m.total_created }}</div>
+      <div class="card-sub">In selected period</div>
+      <div class="drill-hint">Click to see all WOs →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('wo_completed')">
+      <div class="card-label">Completed</div>
+      <div class="big-number green">{{ m.total_completed }}</div>
+      <div class="card-sub">{{ m.pct_completed }}% completion rate</div>
+      <div class="drill-hint">Click to see completed →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('wo_open')">
+      <div class="card-label">Open</div>
+      <div class="big-number" style="color:var(--yellow)">{{ m.total_open }}</div>
+      <div class="card-sub">Active work orders</div>
+      <div class="drill-hint">Click to see open WOs →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('wo_done')">
+      <div class="card-label">Work Done</div>
+      <div class="big-number">{{ m.work_done }}</div>
+      <div class="card-sub">Awaiting billing</div>
+      <div class="drill-hint">Click to see list →</div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-label">Completion Rate</div>
+      <div class="big-number {% if m.pct_completed >= 80 %}green{% elif m.pct_completed >= 60 %}accent{% else %}red{% endif %}">
+        {{ m.pct_completed }}<span>%</span>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="bar-track">
+          <div class="bar-fill {% if m.pct_completed >= 80 %}green{% endif %}" style="width:{{ [m.pct_completed,100]|min }}%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg Work Order Cost</div>
+      <div class="big-number">{{ m.avg_cost | fmt_currency }}</div>
+      <div class="card-sub">{{ m.total_spend | fmt_currency }} total spend</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg WOs per Tenancy</div>
+      <div class="big-number">{{ m.avg_per_tenancy }}</div>
+      <div class="card-sub">Per active unit</div>
+    </div>
+  </div>
+
+  {% set ut = m.unit_turns or {} %}
+  <div class="section-header">Unit Turns <span style="font-size:12px;font-weight:600;color:var(--green);background:rgba(39,174,96,.12);padding:2px 9px;border-radius:20px;margin-left:8px;">Goal ≤ {{ ut.target_days or 14 }} days</span></div>
+  <div class="grid-3">
+    <div class="card card-drill" onclick="openModal('unit_turns_completed')">
+      <div class="card-label">Avg Days to Complete</div>
+      <div class="big-number {% if ut.completed_12mo and ut.avg_days_completed_12mo > (ut.target_days or 14) %}red{% elif ut.completed_12mo %}green{% endif %}">
+        {{ ut.avg_days_completed_12mo or 0 }}<span> days</span>
+      </div>
+      <div class="card-sub">Last 12 months · target ≤ {{ ut.target_days or 14 }} · {{ ut.completed_12mo or 0 }} completed</div>
+      <div class="drill-hint">Click to see completed turns →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('unit_turns')">
+      <div class="card-label">Turns In Progress</div>
+      <div class="big-number {% if ut.over_14_count %}red{% else %}accent{% endif %}">{{ ut.in_progress or 0 }}</div>
+      <div class="card-sub">
+        {% if ut.over_14_count %}<strong style="color:var(--red);">{{ ut.over_14_count }} over {{ ut.target_days or 14 }} days — needs questioning</strong>{% else %}All within target{% endif %}
+      </div>
+      <div class="drill-hint">Click to see active turns →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('unit_turns_over')">
+      <div class="card-label">Completed Over Target</div>
+      <div class="big-number {% if ut.over_14_count_completed %}red{% else %}green{% endif %}">
+        {{ ut.over_14_count_completed or 0 }}
+      </div>
+      <div class="card-sub">{{ ut.over_14_pct_completed or 0 }}% of last 12 months' {{ ut.completed_12mo or 0 }} turns took over {{ ut.target_days or 14 }} days</div>
+      <div class="drill-hint">Click to see these turns →</div>
+    </div>
+  </div>
+  <div style="background:#fdf0e8;border:1px solid #f5c99a;border-radius:10px;padding:10px 14px;margin-bottom:20px;display:flex;align-items:flex-start;gap:8px;">
+    <span style="font-size:14px;flex-shrink:0;">ℹ️</span>
+    <div style="font-size:12px;color:#7a3810;line-height:1.5;">
+      These numbers depend on the team opening a turn at move-out and setting the turn end date when the unit is ready. Stale or unclosed turns will skew the average.
+    </div>
+  </div>
+
+  <div class="section-header">Vendor Breakdown</div>
+  <div class="grid-2">
+    <div class="card card-drill" onclick="openModal('wo_kingsland')">
+      <div class="card-label">Kingsland (In-House)</div>
+      <div class="big-number accent">{{ m.kingsland_created }}</div>
+      <div class="card-sub">{{ m.kingsland_completed }} completed</div>
+      <div style="margin-top:12px;">
+        <div class="bar-row"><span>Completion</span><strong>{% if m.kingsland_created > 0 %}{{ (m.kingsland_completed/m.kingsland_created*100)|round(1) }}%{% else %}—{% endif %}</strong></div>
+        <div class="bar-track"><div class="bar-fill" style="width:{% if m.kingsland_created > 0 %}{{ [(m.kingsland_completed/m.kingsland_created*100)|round(0)|int,100]|min }}{% else %}0{% endif %}%;"></div></div>
+      </div>
+      <div class="drill-hint">Click to see WOs →</div>
+    </div>
+    <div class="card card-drill" onclick="openModal('wo_outside')">
+      <div class="card-label">Outside Vendors</div>
+      <div class="big-number">{{ m.outside_created }}</div>
+      <div class="card-sub">{{ m.outside_completed }} completed</div>
+      <div style="margin-top:12px;">
+        <div class="bar-row"><span>Completion</span><strong>{% if m.outside_created > 0 %}{{ (m.outside_completed/m.outside_created*100)|round(1) }}%{% else %}—{% endif %}</strong></div>
+        <div class="bar-track"><div class="bar-fill" style="width:{% if m.outside_created > 0 %}{{ [(m.outside_completed/m.outside_created*100)|round(0)|int,100]|min }}{% else %}0{% endif %}%;"></div></div>
+      </div>
+      <div class="drill-hint">Click to see WOs →</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Work Orders by Type</div>
+      <div style="height:160px;position:relative;"><canvas id="woTypeChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Completion Rate Trend</div>
+      <div style="height:160px;position:relative;"><canvas id="completionTrendChart"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-top:16px;margin-bottom:16px;">
+    <div class="chart-title">Work Orders Created Over Time</div>
+    <div style="height:140px;position:relative;"><canvas id="woTrendChart"></canvas></div>
+  </div>
+
+</div><!-- /maintenance -->
+
+<!-- ══════════════════════════════════════════════════
+     MARKETING & SHOWINGS TAB (RentEngine — client-rendered)
+══════════════════════════════════════════════════ -->
+<div class="tab-panel {% if active_tab=='marketing' %}active{% endif %}" id="tab-marketing">
+
+  <div style="background:#eef4fb;border:1px solid #bcd4ee;border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:flex-start;gap:8px;">
+    <span style="font-size:14px;flex-shrink:0;">📣</span>
+    <div style="font-size:12px;color:#1d4e74;line-height:1.5;">
+      Marketing &amp; Showings comes live from RentEngine over a rolling <strong>12-month</strong> window — it is independent of the date range above. Auto-refreshes every 10 minutes.
+      <span id="mkt-meta" style="color:#5781a0;"></span>
+    </div>
+  </div>
+
+  <div id="mkt-loading" class="empty">
+    <div class="empty-icon">⏳</div>
+    <h2>Loading marketing data…</h2>
+    <p>RentEngine pulls one report per unit, so the first load can take a moment.</p>
+  </div>
+
+  <div id="mkt-error" class="empty" style="display:none;">
+    <div class="empty-icon">⚠️</div>
+    <h2>Couldn't load marketing data</h2>
+    <p id="mkt-error-msg" style="word-break:break-word;"></p>
+    <button class="apply-btn" style="margin-top:10px;" onclick="loadMarketing(true)">Retry</button>
+  </div>
+
+  <div id="mkt-content" style="display:none;">
+    <div class="section-header">Showings &amp; Leasing Performance</div>
+    <div class="grid-4">
+      <div class="card card-drill" onclick="openModal('mkt_dom')">
+        <div class="card-label">Avg Days on Market</div>
+        <div class="big-number accent" id="mkt-avg-dom">—</div>
+        <div class="card-sub" id="mkt-units-on-market-sub">—</div>
+        <div class="drill-hint">Click to see units →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_dom')">
+        <div class="card-label">Median Days on Market</div>
+        <div class="big-number" id="mkt-median-dom">—</div>
+        <div class="card-sub">Across on-market units</div>
+        <div class="drill-hint">Click to see units →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_on_market')">
+        <div class="card-label">Units on Market</div>
+        <div class="big-number" id="mkt-units-on-market">—</div>
+        <div class="card-sub">Status not “leased”</div>
+        <div class="drill-hint">Click to see units →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_completion')">
+        <div class="card-label">Showing Completion</div>
+        <div class="big-number" id="mkt-completion">—</div>
+        <div class="card-sub" id="mkt-completion-sub">Target ≥ 95%</div>
+        <div class="drill-hint">Click to see by unit →</div>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card card-drill" onclick="openModal('mkt_prospects')">
+        <div class="card-label">New Prospects</div>
+        <div class="big-number accent" id="mkt-prospects">—</div>
+        <div class="card-sub">Last 12 months</div>
+        <div class="drill-hint">Click to see prospects →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_completion')">
+        <div class="card-label">Showings Completed</div>
+        <div class="big-number green" id="mkt-showings-completed">—</div>
+        <div class="card-sub" id="mkt-showings-scheduled-sub">—</div>
+        <div class="drill-hint">Click to see by unit →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_calls')">
+        <div class="card-label">Total Calls</div>
+        <div class="big-number" id="mkt-calls">—</div>
+        <div class="card-sub">Across all units</div>
+        <div class="drill-hint">Click to see by unit →</div>
+      </div>
+      <div class="card card-drill" onclick="openModal('mkt_texts')">
+        <div class="card-label">Outbound Texts</div>
+        <div class="big-number" id="mkt-texts">—</div>
+        <div class="card-sub">Across all units</div>
+        <div class="drill-hint">Click to see by unit →</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Marketing Funnel</div>
+        <div style="height:200px;position:relative;"><canvas id="mktFunnelChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">New Prospects by Source</div>
+        <div style="height:200px;position:relative;"><canvas id="mktSourceChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px;margin-bottom:16px;">
+      <div class="chart-card">
+        <div class="chart-title">Property Health</div>
+        <div style="height:200px;position:relative;"><canvas id="mktHealthChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Health Breakdown</div>
+        <div id="mkt-health-legend" style="font-size:13px;margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /marketing -->
+
+{% endif %}
+</div><!-- /content -->
+
+<!-- ══════════════════════════════════════════════════
+     DRILL-DOWN MODAL
+══════════════════════════════════════════════════ -->
+<div id="modal-backdrop" onclick="closeModal()"></div>
+<div id="modal">
+  <div class="modal-header">
+    <div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-sub" id="modal-sub"></div>
+    </div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-body" id="modal-body"></div>
+</div>
+
+<script>
+// ── Data from server ──────────────────────────────────────────────────────────
+{% if cache %}
+const CACHE = {{ cache | tojson }};
+const L = CACHE.leasing || {};
+const D = CACHE.delinquency || {};
+const M = CACHE.maintenance || {};
+{% else %}
+const CACHE={}, L={}, D={}, M={};
+{% endif %}
+const CHART_DATA  = {{ chart_data | tojson }};
+const REVIEWS_DATA = {{ reviews_data | tojson }};
+
+// ── Tab Switching ─────────────────────────────────────────────────────────────
+function buildRangeQuery() {
+  const sel = document.getElementById('range-select').value;
+  if (sel === 'custom') {
+    const f = document.getElementById('custom-from').value;
+    const t = document.getElementById('custom-to').value;
+    if (f && t) return 'range=custom&from='+f+'&to='+t;
+  }
+  return 'range='+sel;
+}
+
+function activeRangePayload() {
+  // Returns the proper range_key (incl. custom:from:to) for /sync and /filter
+  const sel = document.getElementById('range-select').value;
+  if (sel === 'custom') {
+    const f = document.getElementById('custom-from').value;
+    const t = document.getElementById('custom-to').value;
+    if (f && t) return 'custom:'+f+':'+t;
+    return null; // custom selected but no dates
+  }
+  return sel;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  const map = {leasing:'Leasing', delinquency:'Delinquency', maintenance:'Maintenance', marketing:'Marketing'};
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.textContent.trim() === map[tab]) b.classList.add('active');
+  });
+  history.replaceState(null,'','?tab='+tab+'&'+buildRangeQuery());
+  if (tab === 'marketing') loadMarketing();
+}
+
+function currentTabKey() {
+  const tab = document.querySelector('.tab-btn.active')?.textContent.trim().toLowerCase() || 'leasing';
+  return ['delinquency','maintenance','marketing'].includes(tab) ? tab : 'leasing';
+}
+
+function onRangeChange(val) {
+  const customWrap = document.getElementById('custom-range');
+  if (val === 'custom') {
+    customWrap.style.display = 'flex';
+    // Default to current month if empty
+    const f = document.getElementById('custom-from');
+    const t = document.getElementById('custom-to');
+    if (!f.value || !t.value) {
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      const iso = d => d.toISOString().slice(0,10);
+      f.value = iso(first); t.value = iso(last);
+    }
+    return; // wait for Apply
+  }
+  customWrap.style.display = 'none';
+  const tabKey = currentTabKey();
+  const metaEl = document.getElementById('meta-text');
+  metaEl.textContent = 'Filtering…';
+  fetch('/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({range_key:val})})
+    .then(r=>r.json()).then(data=>{
+      if (data.ok) {
+        window.location.href = '/?tab='+tabKey+'&range='+val;
+      } else {
+        metaEl.textContent = 'Error: '+data.error;
+      }
+    }).catch(()=>{ metaEl.textContent = 'Filter failed.'; });
+}
+
+function applyCustomRange() {
+  const f = document.getElementById('custom-from').value;
+  const t = document.getElementById('custom-to').value;
+  if (!f || !t) { alert('Pick both a from and to date.'); return; }
+  if (f > t)    { alert('"From" must be on or before "To".'); return; }
+  const tabKey = currentTabKey();
+  const rangeKey = 'custom:'+f+':'+t;
+  const metaEl = document.getElementById('meta-text');
+  metaEl.textContent = 'Filtering…';
+  fetch('/filter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({range_key:rangeKey})})
+    .then(r=>r.json()).then(data=>{
+      if (data.ok) {
+        window.location.href = '/?tab='+tabKey+'&range=custom&from='+f+'&to='+t;
+      } else {
+        metaEl.textContent = 'Error: '+data.error;
+      }
+    }).catch(()=>{ metaEl.textContent = 'Filter failed.'; });
+}
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+let pollInterval = null;
+
+function triggerSync() {
+  const rangeKey = activeRangePayload();
+  if (rangeKey === null) {
+    alert('Pick both a from and to date for the custom range, then click Apply or Sync Now.');
+    return;
+  }
+  const btn = document.getElementById('sync-btn');
+  if (btn.disabled) return;
+  btn.classList.add('syncing'); btn.disabled = true;
+  btn.querySelector('.sync-label').textContent = 'Syncing…';
+  fetch('/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({range_key:rangeKey})})
+    .then(r=>r.json()).then(data=>{
+      if (data.ok) { pollInterval = setInterval(pollSync, 3000); }
+      else { resetSync(); alert('Sync failed: '+(data.error||'Unknown')); }
+    }).catch(resetSync);
+}
+function pollSync() {
+  fetch('/sync-status').then(r=>r.json()).then(data=>{
+    if (!data.in_progress) {
+      clearInterval(pollInterval);
+      resetSync();
+      if (data.synced_at) {
+        window.location.href = '/?tab='+currentTabKey()+'&'+buildRangeQuery();
+      }
+    }
+  }).catch(()=>{});
+}
+function resetSync() {
+  const btn=document.getElementById('sync-btn');
+  btn.classList.remove('syncing'); btn.disabled=false;
+  btn.querySelector('.sync-label').textContent='Sync Now';
+}
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+function logReviews() {
+  const counts = {};
+  document.querySelectorAll('.review-input').forEach(inp => {
+    counts[inp.dataset.person] = parseInt(inp.value)||0;
+  });
+  if (!counts['Team Total']) {
+    counts['Team Total'] = Object.entries(counts)
+      .filter(([k])=>k!=='Team Total').reduce((s,[,v])=>s+v,0);
+  }
+  const btn = document.querySelector('.review-btn');
+  if (btn){btn.disabled=true; btn.textContent='Saving…';}
+  fetch('/log-reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(counts)})
+    .then(r=>r.json()).then(data=>{
+      if (data.ok) {
+        // Big "Team Total" number
+        document.getElementById('reviews-cumulative').innerHTML = (data.cumulative['Team Total']||0)+'<span>★</span>';
+        // Per-person YTD bars
+        document.querySelectorAll('#reviews-ytd-list [data-ytd-person]').forEach(row=>{
+          const person = row.dataset.ytdPerson;
+          const v = (data.cumulative && data.cumulative[person]) || 0;
+          row.querySelector('[data-ytd-value]').textContent = v + ' ★';
+        });
+        // Chart
+        if (data.reviews_data && typeof buildReviewsChart === 'function') {
+          buildReviewsChart(data.reviews_data);
+        }
+        // Confirmation + reset
+        const msg=document.getElementById('review-msg');
+        msg.textContent='✓ Saved!'; msg.style.color='var(--green)'; msg.style.display='block';
+        setTimeout(()=>{msg.style.display='none';},3000);
+        document.querySelectorAll('.review-input').forEach(i=>i.value='');
+      } else {
+        const msg=document.getElementById('review-msg');
+        msg.textContent='⚠ Save failed: ' + (data.error||'unknown error');
+        msg.style.color='var(--red)'; msg.style.display='block';
+      }
+    })
+    .catch(err=>{
+      const msg=document.getElementById('review-msg');
+      msg.textContent='⚠ Save failed: ' + err.message;
+      msg.style.color='var(--red)'; msg.style.display='block';
+    })
+    .finally(()=>{ if(btn){btn.disabled=false; btn.textContent='Log Reviews';} });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(type) {
+  const modal     = document.getElementById('modal');
+  const backdrop  = document.getElementById('modal-backdrop');
+  const titleEl   = document.getElementById('modal-title');
+  const subEl     = document.getElementById('modal-sub');
+  const bodyEl    = document.getElementById('modal-body');
+
+  let title = '', sub = '', html = '';
+
+  if (type === 'occupancy') {
+    title = 'Unit Status Breakdown';
+    sub   = `${L.total_active || 0} active units`;
+    html  = tableHtml(
+      ['Status','Count'],
+      [['Current', L.current||0],['Evict', L.evict||0],['Vacant-Rented', L.vacant_rented||0],
+       ['Vacant-Unrented', L.vacant_unrented||0],['Notice-Rented', L.notice_rented||0],
+       ['Notice-Unrented', L.notice_unrented||0]]
+    );
+  } else if (type === 'all_units') {
+    title = 'All Units';
+    const allRows = (L.all_units_detail||[]);
+    sub   = `${allRows.length} total units`;
+    html  = allRows.length ? tableHtml(['Tenant / Owner','Unit','Property','Status','Rent','Lease To'],
+      allRows.map(r=>[r.tenant,r.unit,r.property,r.status,r.rent?fmtCurrency(r.rent):'—',r.lease_to]))
+      : emptyHtml('No units found');
+  } else if (type === 'owner_holds') {
+    title = 'Owner Hold Units';
+    const holdRows = (L.hold_detail||[]);
+    sub   = `${holdRows.length} units tagged as owner hold`;
+    html  = holdRows.length ? tableHtml(['Tenant / Owner','Unit','Property','Status','Rent'],
+      holdRows.map(r=>[r.tenant,r.unit,r.property,r.status,r.rent?fmtCurrency(r.rent):'—']))
+      : emptyHtml('No owner holds found');
+  } else if (type === 'mtm') {
+    title = 'Month-to-Month Leases';
+    const mtmRows = (L.mtm_detail||[]);
+    sub   = `${mtmRows.length} tenants with no fixed end date`;
+    html  = mtmRows.length ? tableHtml(['Tenant','Unit','Property','Status','Rent'],
+      mtmRows.map(r=>[r.tenant,r.unit,r.property,r.status,r.rent?fmtCurrency(r.rent):'—']))
+      : emptyHtml('No month-to-month leases found');
+  } else if (type === 'current') {
+    title = 'Current Tenants';
+    const curRows = (L.current_detail||[]);
+    sub   = `${curRows.length} current tenants`;
+    html  = curRows.length ? tableHtml(['Tenant','Unit','Property','Rent','Lease To'],
+      curRows.map(r=>[r.tenant,r.unit,r.property,r.rent?fmtCurrency(r.rent):'—',r.lease_to]))
+      : emptyHtml('No current tenants found');
+  } else if (type === 'evictions') {
+    title = 'Active Evictions';
+    const evRows = (L.eviction_detail||[]);
+    sub   = `${evRows.length} units in eviction`;
+    html  = evRows.length ? tableHtml(['Tenant','Unit','Property','Rent'],
+      evRows.map(r=>[r.tenant,r.unit,r.property,r.rent?fmtCurrency(r.rent):'—']))
+      : emptyHtml('No active evictions');
+  } else if (type === 'notice_unrented') {
+    title = 'Notice — Unrented';
+    const nuRows = (L.notice_unrented_detail||[]);
+    sub   = `${nuRows.length} tenants — gave notice, no replacement yet`;
+    html  = nuRows.length ? tableHtml(['Tenant','Unit','Property','Rent','Lease To'],
+      nuRows.map(r=>[r.tenant,r.unit,r.property,r.rent?fmtCurrency(r.rent):'—',r.lease_to]))
+      : emptyHtml('No notice-unrented units');
+  } else if (type === 'notice_rented') {
+    title = 'Notice — Rented';
+    const nrRows = (L.notice_rented_detail||[]);
+    sub   = `${nrRows.length} tenants — gave notice, replacement found`;
+    html  = nrRows.length ? tableHtml(['Tenant','Unit','Property','Rent','Lease To'],
+      nrRows.map(r=>[r.tenant,r.unit,r.property,r.rent?fmtCurrency(r.rent):'—',r.lease_to]))
+      : emptyHtml('No notice-rented units');
+  } else if (type === 'vacant' || type === 'vacant_rented') {
+    const isRented = (type === 'vacant_rented');
+    title = isRented ? 'Vacant — Rented Soon Units' : 'Vacant — Not Rented Units';
+    const rows = isRented ? (L.vacant_rented_detail||[]) : (L.vacant_unrented_detail||[]);
+    sub   = `${rows.length} units`;
+    html  = rows.length ? tableHtml(['Unit','Property','Days Vacant','Available On'],
+      rows.map(r=>[r.unit,r.property,r.days_vacant,r.available])) : emptyHtml('No vacant units found');
+  } else if (type === 'moveins') {
+    title = 'Move-Ins'; sub = `${(L.movein_detail||[]).length} move-ins`;
+    html  = detailTable(L.movein_detail||[], ['tenant','unit','property','date'], ['Tenant','Unit','Property','Date']);
+  } else if (type === 'moveouts') {
+    title = 'Move-Outs'; sub = `${(L.moveout_detail||[]).length} move-outs`;
+    html  = detailTable(L.moveout_detail||[], ['tenant','unit','property','date'], ['Tenant','Unit','Property','Date']);
+  } else if (type === 'renewals') {
+    title = 'Renewals'; sub = `${(L.renewal_detail||[]).length} renewals`;
+    html  = detailTable(L.renewal_detail||[], ['tenant','unit','property','status'], ['Tenant','Unit','Property','Status']);
+  } else if (type === 'applications') {
+    title = 'Applications'; sub = `${(L.app_detail||[]).length} applications`;
+    html  = detailTable(L.app_detail||[], ['applicant','unit','property','status','received'], ['Applicant','Unit','Property','Status','Received']);
+  } else if (type === 'delinquency') {
+    title = 'Delinquent Tenants'; sub = `${D.tenant_count||0} tenants · ${fmtCurrency(D.total_delinquent||0)} total`;
+    const rows = (D.delinq_detail||[]).map(r=>[r.tenant,r.unit,r.property,r.status,fmtCurrency(r.amount),fmtCurrency(r['0_30']),fmtCurrency(r['30_plus'])]);
+    html = rows.length ? tableHtml(['Tenant','Unit','Property','Status','Balance','0-30','30+'],rows) : emptyHtml('No delinquent tenants');
+  } else if (type === 'workorders' || type === 'wo_completed' || type === 'wo_open' || type === 'wo_done' || type === 'wo_kingsland' || type === 'wo_outside') {
+    let filtered = M.wo_detail || [];
+    const labelMap = {workorders:'All Work Orders',wo_completed:'Completed Work Orders',wo_open:'Open Work Orders',wo_done:'Work Done',wo_kingsland:'Kingsland In-House Work Orders',wo_outside:'Outside Vendor Work Orders'};
+    title = labelMap[type] || 'Work Orders';
+    if (type==='wo_completed') filtered = filtered.filter(r=>r.status==='Completed'||r.status==='Completed No Need To Bill');
+    if (type==='wo_open')      filtered = filtered.filter(r=>['New','Assigned','Scheduled','Waiting','Estimate Requested','Estimated'].includes(r.status));
+    if (type==='wo_done')      filtered = filtered.filter(r=>r.status==='Work Done');
+    if (type==='wo_kingsland') filtered = filtered.filter(r=>r.vendor==='Kingsland Properties LLC');
+    if (type==='wo_outside')   filtered = filtered.filter(r=>r.vendor && r.vendor!=='Kingsland Properties LLC');
+    sub = `${filtered.length} work orders`;
+    html = filtered.length ? tableHtml(
+      ['#','Unit','Property','Type','Status','Vendor','Amount','Created'],
+      filtered.map(r=>[r.number,r.unit,r.property,r.type,r.status,r.vendor,r.amount?fmtCurrency(r.amount):'—',r.created])
+    ) : emptyHtml('No work orders found');
+  } else if (type === 'unit_turns') {
+    const UT = M.unit_turns || {};
+    const rows = UT.active_detail || [];
+    const tgt  = UT.target_days || 14;
+    title = 'Active Unit Turns';
+    sub   = `${rows.length} in progress · ${UT.over_14_count||0} over ${tgt} days`;
+    html  = rows.length ? tableHtml(
+      ['Unit','Property','Started','Days Active','Stage','Status'],
+      rows.map(r=>[
+        r.unit, r.property, r.started, r.days_active, r.stage,
+        r.flagged
+          ? `<span style="color:var(--red);font-weight:700;">⚠ Over target</span>`
+          : `<span style="color:var(--green);">On track</span>`
+      ])
+    ) : emptyHtml('No active unit turns');
+  } else if (type === 'unit_turns_completed' || type === 'unit_turns_over') {
+    const UT = M.unit_turns || {};
+    const tgt = UT.target_days || 14;
+    let rows  = UT.completed_detail || [];
+    if (type === 'unit_turns_over') rows = rows.filter(r=>r.flagged);
+    title = (type === 'unit_turns_over')
+      ? `Completed Turns Over ${tgt} Days`
+      : 'Completed Unit Turns (Last 12 Months)';
+    sub   = `${rows.length} turns`;
+    html  = rows.length ? tableHtml(
+      ['Unit','Property','Move-Out','Turn Ready','Days to Complete','Status'],
+      rows.map(r=>[
+        r.unit, r.property, r.started, r.ended, r.days,
+        r.flagged
+          ? `<span style="color:var(--red);font-weight:700;">⚠ Over target</span>`
+          : `<span style="color:var(--green);">Within target</span>`
+      ])
+    ) : emptyHtml('No completed turns in this range');
+  } else if (type === 'mkt_dom' || type === 'mkt_on_market') {
+    const k = (MKT && MKT.kpis) || {};
+    const rows = ((MKT && MKT.units_detail) || []).filter(u=>u.on_market).sort((a,b)=>b.days-a.days);
+    title = 'Units on Market';
+    sub   = `${rows.length} units · avg ${k.avg_dom||0} days · median ${k.median_dom||0} days`;
+    html  = rows.length ? tableHtml(
+      ['Address','Status','Health','Days on Market'],
+      rows.map(r=>[r.address, r.status, r.health, r.days])
+    ) : emptyHtml('No units on market');
+  } else if (type === 'mkt_completion') {
+    const k = (MKT && MKT.kpis) || {};
+    const tgt = (MKT && MKT.target_completion) || 95;
+    const rows = ((MKT && MKT.units_detail) || []).filter(u=>u.scheduled>0).sort((a,b)=>b.scheduled-a.scheduled);
+    title = 'Showing Completion by Unit';
+    sub   = `${k.showings_completed||0}/${k.showings_scheduled||0} completed · ${k.completion_rate||0}% (target ≥ ${tgt}%)`;
+    html  = rows.length ? tableHtml(
+      ['Address','Status','Scheduled','Completed','Rate'],
+      rows.map(r=>[r.address, r.status, r.scheduled, r.completed,
+        `<span style="color:${r.rate>=tgt?'var(--green)':'var(--red)'};font-weight:600;">${r.rate}%</span>`])
+    ) : emptyHtml('No showings scheduled');
+  } else if (type === 'mkt_prospects') {
+    const rows = (MKT && MKT.prospects_detail) || [];
+    title = 'New Prospects';
+    sub   = `${rows.length} in the last 12 months`;
+    html  = rows.length ? tableHtml(
+      ['Name','Source','Date'],
+      rows.map(r=>[r.name, r.source, r.created])
+    ) : emptyHtml('No prospects');
+  } else if (type === 'mkt_calls' || type === 'mkt_texts') {
+    const k = (MKT && MKT.kpis) || {};
+    const byTexts = type === 'mkt_texts';
+    const rows = ((MKT && MKT.units_detail) || []).slice()
+      .sort((a,b)=> byTexts ? b.texts-a.texts : b.calls-a.calls)
+      .filter(r=> (byTexts ? r.texts : r.calls) > 0);
+    title = byTexts ? 'Outbound Texts by Unit' : 'Total Calls by Unit';
+    sub   = byTexts ? `${(k.outbound_texts||0).toLocaleString()} texts across all units`
+                    : `${(k.total_calls||0).toLocaleString()} calls across all units`;
+    html  = rows.length ? tableHtml(
+      ['Address','Status','Calls','Texts'],
+      rows.map(r=>[r.address, r.status, r.calls, r.texts])
+    ) : emptyHtml('No activity recorded');
+  } else if (type === 'mkt_applications') {
+    const rows = (MKT && MKT.applications_detail) || [];
+    title = 'Rental Applications';
+    sub   = `${rows.length} in the last 12 months`;
+    html  = rows.length ? tableHtml(
+      ['Applicant','Date'],
+      rows.map(r=>[r.name, r.created])
+    ) : emptyHtml('No applications');
+  } else if (type.indexOf('mkt_source:') === 0) {
+    const src  = type.slice('mkt_source:'.length);
+    const rows = ((MKT && MKT.prospects_detail) || []).filter(p=>p.source===src);
+    title = 'New Prospects · ' + src;
+    sub   = `${rows.length} from ${src} in the last 12 months`;
+    html  = rows.length ? tableHtml(
+      ['Name','Source','Date'],
+      rows.map(r=>[r.name, r.source, r.created])
+    ) : emptyHtml('No prospects from this source');
+  } else if (type.indexOf('mkt_health:') === 0) {
+    const label = type.slice('mkt_health:'.length);
+    const all   = (MKT && MKT.units_detail) || [];
+    let rows;
+    if (label === 'Off-Market') {
+      rows  = all.filter(u=>!u.on_market);
+      title = 'Units Not Currently Marketed';
+      sub   = `${rows.length} units with a leased/occupied status`;
+    } else {
+      rows  = all.filter(u=>u.on_market && u.health===label);
+      title = 'On-Market Units · ' + label;
+      sub   = `${rows.length} units rated ${label}`;
+    }
+    html  = rows.length ? tableHtml(
+      ['Address','Status','Health','Days on Market'],
+      rows.map(r=>[r.address, r.status, r.health, r.days])
+    ) : emptyHtml('No units');
+  }
+
+  titleEl.textContent = title;
+  subEl.textContent   = sub;
+  bodyEl.innerHTML    = html;
+  modal.classList.add('open');
+  backdrop.style.display = 'block';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('modal-backdrop').style.display = 'none';
+}
+
+function tableHtml(headers, rows) {
+  const ths = headers.map(h=>`<th>${h}</th>`).join('');
+  const trs = rows.map(r=>'<tr>'+r.map(c=>`<td>${c??'—'}</td>`).join('')+'</tr>').join('');
+  return `<table class="modal-table"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+}
+function detailTable(rows, keys, headers) {
+  if (!rows.length) return emptyHtml('No records found');
+  return tableHtml(headers, rows.map(r=>keys.map(k=>r[k]??'—')));
+}
+function emptyHtml(msg) {
+  return `<div class="modal-empty">${msg}</div>`;
+}
+function fmtCurrency(v) {
+  try { return '$'+parseFloat(v).toLocaleString('en-US',{maximumFractionDigits:0}); } catch { return '—'; }
+}
+
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const ORANGE='#E8691A', OL='rgba(232,105,26,.15)', GREEN='#27ae60', GL='rgba(39,174,96,.15)',
+      RED='#c0392b', YELLOW='#d68910', BLUE='#2471a3', PURPLE='#7d3c98', MUTED='#9e9892', GRID='#e8e4df';
+
+Chart.defaults.color='#6b6460';
+Chart.defaults.font.family="'Outfit',sans-serif";
+Chart.defaults.font.size=11;
+
+{% if cache %}
+// Occupancy Trend
+if (CHART_DATA.labels?.length && document.getElementById('occTrendChart')) {
+  new Chart(document.getElementById('occTrendChart'),{type:'line',data:{labels:CHART_DATA.labels,datasets:[
+    {label:'Occupancy %',data:CHART_DATA.occ_trend,borderColor:ORANGE,backgroundColor:OL,tension:.4,fill:true,borderWidth:2,pointRadius:3},
+    {label:'Pre-Leased %',data:CHART_DATA.pre_trend,borderColor:GREEN,backgroundColor:'transparent',tension:.4,fill:false,borderWidth:2,pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{y:{min:0,max:100,grid:{color:GRID},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}});
+}
+
+// Reviews
+let reviewsChart=null;
+function buildReviewsChart(data) {
+  const ctx=document.getElementById('reviewsChart'); if(!ctx)return;
+  if(reviewsChart) reviewsChart.destroy();
+  reviewsChart=new Chart(ctx,{type:'bar',data:{labels:data.labels||[],datasets:[
+    {label:'Weekly',data:data.team_counts||[],backgroundColor:OL,borderColor:ORANGE,borderWidth:1.5,borderRadius:4},
+    {label:'Cumulative',data:data.team_cum||[],type:'line',borderColor:GREEN,backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3,yAxisID:'y2'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{y:{grid:{color:GRID},beginAtZero:true},y2:{position:'right',grid:{display:false},beginAtZero:true},x:{grid:{display:false}}}}});
+}
+buildReviewsChart(REVIEWS_DATA);
+
+// Delinquency Trend
+if (CHART_DATA.labels?.length && document.getElementById('delinqTrendChart')) {
+  new Chart(document.getElementById('delinqTrendChart'),{type:'line',data:{labels:CHART_DATA.labels,datasets:[
+    {label:'Total Delinquent',data:CHART_DATA.delinq_trend,borderColor:RED,backgroundColor:'rgba(192,57,43,.1)',tension:.4,fill:true,borderWidth:2,pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:GRID},ticks:{callback:v=>'$'+v.toLocaleString()}},x:{grid:{display:false}}}}});
+}
+
+// Collection Trend
+if (CHART_DATA.labels?.length && document.getElementById('collectionTrendChart')) {
+  new Chart(document.getElementById('collectionTrendChart'),{type:'line',data:{labels:CHART_DATA.labels,datasets:[
+    {label:'Collection %',data:CHART_DATA.collection_trend,borderColor:GREEN,backgroundColor:GL,tension:.4,fill:true,borderWidth:2,pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,grid:{color:GRID},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}});
+}
+
+// PM Trend
+if (CHART_DATA.labels?.length && CHART_DATA.pm_trends && document.getElementById('pmTrendChart')) {
+  const pmColors=[ORANGE,BLUE,PURPLE];
+  const pmNames=Object.keys(CHART_DATA.pm_trends);
+  new Chart(document.getElementById('pmTrendChart'),{type:'line',data:{labels:CHART_DATA.labels,datasets:pmNames.map((name,i)=>({
+    label:name,data:CHART_DATA.pm_trends[name],borderColor:pmColors[i%pmColors.length],backgroundColor:'transparent',tension:.4,borderWidth:2,pointRadius:3,
+  }))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{y:{grid:{color:GRID},ticks:{callback:v=>'$'+v.toLocaleString()}},x:{grid:{display:false}}}}});
+}
+
+// WO Type Donut
+if (M.by_type && document.getElementById('woTypeChart')) {
+  const bt=M.by_type;
+  new Chart(document.getElementById('woTypeChart'),{type:'doughnut',data:{
+    labels:['Unit Turn','Resident','Internal'],
+    datasets:[{data:[bt.unit_turn||0,bt.resident||0,bt.internal||0],backgroundColor:[ORANGE,BLUE,MUTED],borderWidth:0,hoverOffset:4}],
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10}}},cutout:'65%'}});
+}
+
+// Completion Trend
+// Completion Rate Trend — last 12 weeks, computed from raw work order data
+const WK = CHART_DATA.wo_weekly || {labels:[],pct_completed:[],created:[],completed:[]};
+if (WK.labels?.length && document.getElementById('completionTrendChart')) {
+  new Chart(document.getElementById('completionTrendChart'),{type:'line',data:{labels:WK.labels,datasets:[
+    {label:'Completion %',data:WK.pct_completed,borderColor:GREEN,backgroundColor:GL,tension:.4,fill:true,borderWidth:2,pointRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const i=ctx.dataIndex;return `${WK.pct_completed[i]}% (${WK.completed[i]}/${WK.created[i]})`;}}}},scales:{y:{min:0,max:100,grid:{color:GRID},ticks:{callback:v=>v+'%'}},x:{grid:{display:false},title:{display:true,text:'Week of',color:'#999',font:{size:10}}}}}});
+}
+
+// WO Trend — last 12 weeks, created per week
+if (WK.labels?.length && document.getElementById('woTrendChart')) {
+  new Chart(document.getElementById('woTrendChart'),{type:'bar',data:{labels:WK.labels,datasets:[
+    {label:'WOs Created',data:WK.created,backgroundColor:OL,borderColor:ORANGE,borderWidth:1.5,borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:GRID},beginAtZero:true},x:{grid:{display:false},title:{display:true,text:'Week of',color:'#999',font:{size:10}}}}}});
+}
+{% endif %}
+
+// ── Marketing & Showings (RentEngine, client-rendered) ────────────────────────
+let MKT = null, mktLoaded = false, mktPoll = null;
+let mktFunnelChart = null, mktSourceChart = null, mktHealthChart = null;
+const MKT_PALETTE = [GREEN, YELLOW, BLUE, PURPLE, RED, MUTED, ORANGE];
+
+function loadMarketing(force) {
+  const loading = document.getElementById('mkt-loading');
+  if (!loading) return;               // panel not on the page (no AppFolio cache)
+  if (force) { mktLoaded = false; MKT = null; }
+  if (!mktLoaded) {                    // first load / forced — show the spinner
+    loading.style.display = 'block';
+    document.getElementById('mkt-error').style.display   = 'none';
+    document.getElementById('mkt-content').style.display = 'none';
+  }
+  // Always re-check the server: it serves the cached copy instantly and kicks a
+  // background refresh once the 10-minute TTL has passed.
+  fetch('/marketing' + (force ? '?force=1' : ''))
+    .then(r=>r.json()).then(handleMarketing)
+    .catch(()=>{ if (!mktLoaded) showMktError('Network error contacting the server.'); });
+}
+
+function handleMarketing(res) {
+  if (res.ready && res.data) {
+    MKT = res.data; mktLoaded = true;
+    renderMarketing(res);
+    if (res.stale && !mktPoll) {
+      // backend kicked a background refresh — poll until the fresh numbers land
+      mktPoll = setInterval(()=>fetch('/marketing').then(r=>r.json()).then(handleMarketing).catch(()=>{}), 4000);
+    } else if (!res.stale && mktPoll) {
+      clearInterval(mktPoll); mktPoll = null;
+    }
+  } else if (res.error) {
+    if (mktPoll) { clearInterval(mktPoll); mktPoll = null; }
+    if (!mktLoaded) showMktError(res.error);
+  } else if (!mktPoll) {
+    // still doing the first fetch — poll until ready
+    mktPoll = setInterval(()=>fetch('/marketing').then(r=>r.json()).then(handleMarketing).catch(()=>{}), 4000);
+  }
+}
+
+function showMktError(msg) {
+  document.getElementById('mkt-loading').style.display = 'none';
+  document.getElementById('mkt-content').style.display = 'none';
+  document.getElementById('mkt-error').style.display   = 'block';
+  document.getElementById('mkt-error-msg').textContent = msg;
+}
+
+function renderMarketing(res) {
+  document.getElementById('mkt-loading').style.display = 'none';
+  document.getElementById('mkt-error').style.display   = 'none';
+  document.getElementById('mkt-content').style.display = 'block';
+  const k = MKT.kpis || {};
+  const tgt = MKT.target_completion || 95;
+  const set = (id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('mkt-avg-dom', (k.avg_dom||0)+' days');
+  set('mkt-median-dom', (k.median_dom||0)+' days');
+  set('mkt-units-on-market', k.units_on_market||0);
+  set('mkt-units-on-market-sub', 'Across '+(k.units_on_market||0)+' on-market units');
+  set('mkt-completion', (k.completion_rate||0)+'%');
+  set('mkt-completion-sub', 'Target ≥ '+tgt+'%');
+  set('mkt-prospects', (k.new_prospects||0).toLocaleString());
+  set('mkt-showings-completed', (k.showings_completed||0).toLocaleString());
+  set('mkt-showings-scheduled-sub', (k.showings_scheduled||0).toLocaleString()+' scheduled');
+  set('mkt-calls', (k.total_calls||0).toLocaleString());
+  set('mkt-texts', (k.outbound_texts||0).toLocaleString());
+
+  const compEl = document.getElementById('mkt-completion');
+  if (compEl) compEl.className = 'big-number ' + ((k.completion_rate||0) >= tgt ? 'green' : 'red');
+
+  const meta = document.getElementById('mkt-meta');
+  if (meta && res.fetched_at) {
+    const dt = new Date(res.fetched_at*1000);
+    meta.textContent = ' Last updated ' + dt.toLocaleString() + '.' + (res.stale ? ' Refreshing…' : '');
+  }
+  buildMktCharts();
+}
+
+function buildMktCharts() {
+  const baseBar = {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+                   scales:{x:{grid:{color:GRID},beginAtZero:true},y:{grid:{display:false}}}};
+  // Funnel — horizontal bar (Prospects → Scheduled → Completed → Applications)
+  const fEl = document.getElementById('mktFunnelChart');
+  if (fEl) {
+    if (mktFunnelChart) mktFunnelChart.destroy();
+    const f = MKT.funnel || [];
+    const fmap = {'Prospects':'mkt_prospects','Showings Scheduled':'mkt_completion','Showings Completed':'mkt_completion','Applications':'mkt_applications'};
+    mktFunnelChart = new Chart(fEl,{type:'bar',data:{labels:f.map(s=>s.stage),datasets:[
+      {data:f.map(s=>s.value),backgroundColor:[ORANGE,BLUE,GREEN,PURPLE],borderWidth:0,borderRadius:4}
+    ]},options:{indexAxis:'y',...baseBar,onClick:(e,els)=>{ if(!els.length) return; const t=fmap[f[els[0].index].stage]; if(t) openModal(t); }}});
+  }
+  // New prospects by source — horizontal bar (top 10)
+  const sEl = document.getElementById('mktSourceChart');
+  if (sEl) {
+    if (mktSourceChart) mktSourceChart.destroy();
+    const ps = (MKT.prospects_by_source || []).slice(0,10);
+    mktSourceChart = new Chart(sEl,{type:'bar',data:{labels:ps.map(s=>s.source),datasets:[
+      {data:ps.map(s=>s.count),backgroundColor:OL,borderColor:ORANGE,borderWidth:1.5,borderRadius:4}
+    ]},options:{indexAxis:'y',...baseBar,onClick:(e,els)=>{ if(!els.length) return; openModal('mkt_source:'+ps[els[0].index].source); }}});
+  }
+  // Property health — donut + custom legend with counts
+  const ph = MKT.property_health || [];
+  const hEl = document.getElementById('mktHealthChart');
+  if (hEl) {
+    if (mktHealthChart) mktHealthChart.destroy();
+    mktHealthChart = new Chart(hEl,{type:'doughnut',data:{labels:ph.map(h=>h.label),datasets:[
+      {data:ph.map(h=>h.count),backgroundColor:ph.map((_,i)=>MKT_PALETTE[i%MKT_PALETTE.length]),borderWidth:0,hoverOffset:4}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'62%',onClick:(e,els)=>{ if(!els.length) return; openModal('mkt_health:'+ph[els[0].index].label); }}});
+  }
+  const leg = document.getElementById('mkt-health-legend');
+  if (leg) {
+    const total = ph.reduce((s,h)=>s+h.count,0) || 1;
+    leg.innerHTML = ph.length ? ph.map((h,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bg);">
+        <span style="width:11px;height:11px;border-radius:3px;background:${MKT_PALETTE[i%MKT_PALETTE.length]};display:inline-block;flex-shrink:0;"></span>
+        <span style="flex:1;">${h.label}</span>
+        <strong>${h.count}</strong>
+        <span style="color:var(--muted);width:48px;text-align:right;">${(h.count/total*100).toFixed(0)}%</span>
+      </div>`).join('') : '<div class="modal-empty">No on-market units</div>';
+  }
+}
+
+// Auto-load if the Marketing tab is the active tab on page load
+if (document.getElementById('tab-marketing')?.classList.contains('active')) loadMarketing();
+</script>
+</body>
+</html>

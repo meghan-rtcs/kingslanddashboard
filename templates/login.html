@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kingsland KPI Dashboard — Sign In</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.45);
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .logo-badge {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      background: #0f172a;
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 700;
+      margin: 0 auto 18px;
+    }
+    h1 { font-size: 20px; color: #0f172a; margin-bottom: 6px; }
+    .sub { font-size: 14px; color: #64748b; margin-bottom: 28px; }
+    label {
+      display: block; text-align: left;
+      font-size: 13px; font-weight: 600; color: #334155;
+      margin-bottom: 6px;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input[type="password"]:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 12px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover { background: #1d4ed8; }
+    .error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-bottom: 18px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo-badge">K</div>
+    <h1>Kingsland KPI Dashboard</h1>
+    <div class="sub">Enter the password to continue</div>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="POST" action="/login">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autofocus autocomplete="current-password" required>
+      <button type="submit">Sign In</button>
+    </form>
+  </div>
+</body>
+</html>

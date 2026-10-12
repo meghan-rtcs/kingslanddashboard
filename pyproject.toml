@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "kingsland-kpi-dashboard"
+version = "2.0.0"
+description = "Kingsland Properties KPI Dashboard"
+authors = ["Kingsland Properties"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "^3.0.0"
+requests = "^2.31.0"
+apscheduler = "^3.10.0"
+gunicorn = "^21.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
